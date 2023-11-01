@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "bezier-easing": "^2.1.0",
+    "canvas-sketch": "^0.7.7",
+    "canvas-sketch-cli": "^1.11.21",
+    "canvas-sketch-util": "^1.10.0",
+    "eases": "^1.0.8",
+    "g": "^2.0.1",
+    "glsl-aastep": "^1.0.1",
+    "glsl-hsl2rgb": "^1.1.0",
+    "glsl-noise": "^0.0.0",
+    "nice-color-palettes": "^3.0.0",
+    "riso-colors": "^1.0.1",
+    "three": "^0.147.0"
+  }
+}
