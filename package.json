@@ -1,0 +1,22 @@
+{
+  "name": "uber-sketches",
+  "version": "1.0.0",
+  "description": "Ideas for the web start here and spin out if they get large enough",
+  "main": "sketch-skew.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bezier-easing": "^2.1.0",
+    "canvas-sketch": "^0.7.7",
+    "canvas-sketch-util": "^1.10.0",
+    "eases": "^1.0.8",
+    "nice-color-palettes": "^3.0.0",
+    "riso-colors": "^1.0.1",
+    "three": "^0.147.0",
+    "tweakpane": "^4.0.1"
+  }
+}
