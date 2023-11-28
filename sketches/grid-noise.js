@@ -3,6 +3,9 @@ const random = require("canvas-sketch-util/random");
 const math = require("canvas-sketch-util/math");
 const tweakpane = require("tweakpane");
 
+const makeGridPositions = require("../lib/grid");
+const drawCenteredText = require("../lib/centered-text");
+
 const settings = {
     dimensions: [1080, 1080],
     animate: true,
@@ -24,48 +27,6 @@ const params = {
     // amp: 0.2,
     // animate: true,
     // frame: 0,
-};
-
-/**
- * Creates a grid of positions based on the specified number of columns and rows.
- * Each position in the grid is represented as an object containing its column (col),
- * row, and its x and y coordinates within the grid. The function also calculates
- * the width and height of each cell in the grid.
- *
- * @param {number} cols - The number of columns in the grid.
- * @param {number} rows - The number of rows in the grid.
- * @param {number} gridW - The total width of the grid.
- * @param {number} gridH - The total height of the grid.
- * @param {number} margX - The horizontal margin or offset to apply to each cell's x position.
- * @param {number} margY - The vertical margin or offset to apply to each cell's y position.
- * @returns {Object[]} positions - An array of objects where each object represents a cell's position and size.
- *                                Each object has the properties: col (column index), row (row index),
- *                                x (x-coordinate of the cell), y (y-coordinate of the cell),
- *                                w (width of the cell), and h (height of the cell).
- */
-const makeGridPositions = (cols, rows, gridW, gridH, margX, margY) => {
-    const numCells = cols * rows;
-
-    const cellW = gridW / cols;
-    const cellH = gridH / rows;
-
-    let positions = [];
-    let idx = 0;
-    for (let i = 0; i < numCells; i++) {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-
-        positions.push({
-            idx: idx++,
-            col,
-            row,
-            x: margX + col * cellW,
-            y: margY + row * cellH,
-            w: cellW,
-            h: cellH,
-        });
-    }
-    return positions;
 };
 
 const drawSquare = (ctx, width, height) => {
@@ -92,8 +53,6 @@ const sketch = () => {
         context.fillStyle = "#ff0000";
         context.strokeStyle = "#fff";
         context.font = "100px serif";
-        context.textBaseline = "top";
-        // context.textAlign = "center";
 
         pos.forEach(({ idx, col, row, x, y, w, h }) => {
             context.save();
@@ -104,26 +63,7 @@ const sketch = () => {
             context.lineWidth = 2;
             context.strokeRect(0, 0, w, h);
 
-            // measure text
-            const text = idx.toString();
-            const metrics = context.measureText(text);
-
-            const mx = metrics.actualBoundingBoxLeft * -1;
-            const my = metrics.actualBoundingBoxAscent * -1;
-            const mw = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
-            const mh = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-
-            // center text
-            const tx = (w - mw) * 0.5 - mx;
-            const ty = (h - mh) * 0.5 - my;
-            context.translate(tx, ty);
-
-            // draw text outline
-            context.strokeStyle = "#00ff00";
-            context.strokeRect(mx, my, mw, mh);
-
-            // draw text
-            context.fillText(text, 0, 0);
+            drawCenteredText(context, idx, w, h);
 
             context.restore();
         });
@@ -191,8 +131,8 @@ const createPane = () => {
     let folder;
 
     folder = pane.addFolder({ title: "Grid" });
-    folder.addInput(params, "cols", { min: 2, max: 50, step: 1 });
-    folder.addInput(params, "rows", { min: 2, max: 50, step: 1 });
+    folder.addInput(params, "cols", { min: 2, max: 24, step: 1 });
+    folder.addInput(params, "rows", { min: 2, max: 24, step: 1 });
     folder.addInput(params, "margin", { min: 0.0, max: 1.0 });
 
     // folder = pane.addFolder({ title: "Symbol" });
