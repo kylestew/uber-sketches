@@ -6,6 +6,8 @@ interface IBoid {
     acceleration: IVector
 
     perceptionRadius: number
+    maxSpeed: number
+    maxForce: number
 
     displaySize: number
 
@@ -13,86 +15,128 @@ interface IBoid {
     draw(ctx: CanvasRenderingContext2D): void
 }
 
+interface IBoidInfo {
+    otherBoid: Boid
+    distance: number
+    wrapBoundaries: IVector
+}
+
 export default class Boid implements IBoid {
     position: IVector
     velocity: IVector
     acceleration: IVector
     perceptionRadius: number
+    maxSpeed: number
+    maxForce: number
     displaySize: number
 
-    constructor(position: IVector, velocity: IVector, perceptionRadius: number, displaySize: number) {
+    constructor(
+        position: IVector,
+        velocity: IVector,
+        perceptionRadius: number,
+        displaySize: number,
+        maxSpeed: number = 2.0,
+        maxForce: number = 0.1
+    ) {
         this.position = position
         this.velocity = velocity
         this.acceleration = Vector.zero()
         this.perceptionRadius = perceptionRadius
+        this.maxSpeed = maxSpeed
+        this.maxForce = maxForce
         this.displaySize = displaySize
     }
 
-    calculateSeperation(boids: Boid[]) {
-        let steering = Vector.zero()
-        let total = 0
-        boids.forEach((otherBoid) => {
-            let distance = this.position.distance(otherBoid.position)
-            let diff = this.position.subtract(otherBoid.position)
-            diff = diff.normalize().divide(distance) // weight by distance
-            steering = steering.add(diff)
-            total++
-        })
+    calculateSeperation(boids: IBoidInfo[]) {
+        let steering = boids.reduce((acc, { otherBoid, distance, wrapBoundaries }) => {
+            let diff = this.position.toroidalSubtraction(
+                otherBoid.position,
+                wrapBoundaries.x,
+                wrapBoundaries.y
+            )
+            diff = diff.divide(distance) // weight by distance
+            return acc.add(diff)
+        }, Vector.zero())
+        let total = boids.length
         if (total > 0) {
             steering = steering.divide(total)
+            // do it at max speed
+            steering = steering.setMagnitude(this.maxSpeed)
+            // move my velocity towards goal
+            steering = steering.subtract(this.velocity)
+            // limit
+            steering = steering.limit(this.maxForce)
         }
         return steering
     }
 
-    calculateAlignment(boids: Boid[]) {
-        let avgVelocity = Vector.zero()
-        let total = 0
-        boids.forEach((otherBoid) => {
-            avgVelocity = avgVelocity.add(otherBoid.velocity)
-            total += 1
-        })
+    calculateAlignment(boids: IBoidInfo[]) {
+        // sum all the velocities of the other boids
+        let avgVelocity = boids.reduce((acc, { otherBoid }) => {
+            return acc.add(otherBoid.velocity)
+        }, Vector.zero())
+        let total = boids.length
         if (total > 0) {
+            // average direction
             avgVelocity = avgVelocity.divide(total)
+            // steer towards neighbords average at max speed
+            avgVelocity = avgVelocity.setMagnitude(this.maxSpeed)
+            // steer towards average
             avgVelocity = avgVelocity.subtract(this.velocity)
+            // limit
+            avgVelocity = avgVelocity.limit(this.maxForce)
         }
-        return avgVelocity.divide(12)
+        return avgVelocity
     }
 
-    calculateCohesion(boids: Boid[]) {
-        let centerOfMass = Vector.zero()
-        let total = 0
-        boids.forEach((otherBoid) => {
-            centerOfMass = centerOfMass.add(otherBoid.position)
-            total += 1
-        })
+    calculateCohesion(boids: IBoidInfo[]) {
+        let centerOfMass = boids.reduce((acc, { otherBoid }) => {
+            return acc.add(otherBoid.position)
+        }, Vector.zero())
+        let total = boids.length
         if (total > 0) {
+            // average location
             centerOfMass = centerOfMass.divide(total)
-            return centerOfMass.subtract(this.position).divide(4000)
+            // steer towards center of mass
+            centerOfMass = centerOfMass.subtract(this.position)
+            // do it at max speed
+            centerOfMass = centerOfMass.setMagnitude(this.maxSpeed)
+            // move my velocity towards goal
+            centerOfMass = centerOfMass.subtract(this.velocity)
+            // limit
+            centerOfMass = centerOfMass.limit(this.maxForce)
+            return centerOfMass
         }
         return Vector.zero()
     }
 
     simulate(flock: Boid[], wrapBoundaries: Vector) {
-        // get all boids within perception radius
-        const inPerceptionRadius = flock.filter((otherBoid) => {
-            let distance = this.position.toroidalDistance(
-                otherBoid.position,
-                wrapBoundaries.x,
-                wrapBoundaries.y
-            )
-            return distance > 0 && distance < this.perceptionRadius
-        })
+        // Get all boids within perception radius
+        const inPerceptionRadius = flock
+            .map((otherBoid) => {
+                let distance = this.position.toroidalDistance(
+                    otherBoid.position,
+                    wrapBoundaries.x,
+                    wrapBoundaries.y
+                )
+                return distance > 0 && distance < this.perceptionRadius
+                    ? { otherBoid, distance, wrapBoundaries }
+                    : null
+            })
+            .filter((item) => item !== null) as IBoidInfo[]
 
-        // (1) Seperation
+        // Boids algorithm
+        this.acceleration = Vector.zero()
         this.acceleration = this.acceleration.add(this.calculateSeperation(inPerceptionRadius))
         this.acceleration = this.acceleration.add(this.calculateAlignment(inPerceptionRadius))
         this.acceleration = this.acceleration.add(this.calculateCohesion(inPerceptionRadius))
 
+        // physics update
         this.velocity = this.velocity.add(this.acceleration)
+        this.velocity = this.velocity.limit(this.maxSpeed)
         this.position = this.position.add(this.velocity)
-        this.acceleration = Vector.zero()
 
-        // enforce boundaries
+        // enforce wrap boundaries
         if (this.position.x < 0) {
             this.position = new Vector(wrapBoundaries.x, this.position.y)
         } else if (this.position.x > wrapBoundaries.x) {
@@ -132,17 +176,19 @@ export default class Boid implements IBoid {
         ctx.closePath()
         ctx.fill()
 
-        // // Draw the debug line
-        // const debugLineLength = 30 // Adjust the length of the debug line as needed
-        // const debugLineEnd = {
-        //     x: pointA.x + Math.cos(angle) * debugLineLength,
-        //     y: pointA.y + Math.sin(angle) * debugLineLength,
-        // }
+        /*
+        // Draw the debug line
+        const debugLineLength = 20 // Adjust the length of the debug line as needed
+        const debugLineEnd = {
+            x: pointA.x + Math.cos(angle) * debugLineLength,
+            y: pointA.y + Math.sin(angle) * debugLineLength,
+        }
 
-        // ctx.strokeStyle = '#f00' // Red color for the debug line
-        // ctx.beginPath()
-        // ctx.moveTo(pointA.x, pointA.y)
-        // ctx.lineTo(debugLineEnd.x, debugLineEnd.y)
-        // ctx.stroke()
+        ctx.strokeStyle = '#f00' // Red color for the debug line
+        ctx.beginPath()
+        ctx.moveTo(pointA.x, pointA.y)
+        ctx.lineTo(debugLineEnd.x, debugLineEnd.y)
+        ctx.stroke()
+        */
     }
 }

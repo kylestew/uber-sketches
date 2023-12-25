@@ -20,7 +20,7 @@ function setupCanvas() {
 function setupAgents(randomPositionFn: () => Vector, randomVelocityFn: () => Vector): Boid[] {
     let agents: Boid[] = []
     for (let i = 0; i < BOID_COUNT; i++) {
-        agents.push(new Boid(randomPositionFn(), randomVelocityFn(), PERCEPTION_RADIUS, 4))
+        agents.push(new Boid(randomPositionFn(), randomVelocityFn(), PERCEPTION_RADIUS, 8))
     }
     return agents
 }
@@ -50,8 +50,8 @@ function randomDirectionWithSpeed(speed: number) {
 
 const ctx = setupCanvas()
 
-const BOID_COUNT = 400
-const PERCEPTION_RADIUS = ctx.canvas.width * 0.1
+const BOID_COUNT = 800
+const PERCEPTION_RADIUS = ctx.canvas.width * 0.05
 
 const agents = setupAgents(
     () => new Vector(Math.random() * ctx.canvas.width, Math.random() * ctx.canvas.height),
