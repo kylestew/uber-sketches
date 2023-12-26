@@ -20,7 +20,7 @@ function setupCanvas() {
 function setupAgents(randomPositionFn: () => Vector, randomVelocityFn: () => Vector): Boid[] {
     let agents: Boid[] = []
     for (let i = 0; i < BOID_COUNT; i++) {
-        agents.push(new Boid(randomPositionFn(), randomVelocityFn(), PERCEPTION_RADIUS, 8))
+        agents.push(new Boid(randomPositionFn(), randomVelocityFn(), PERCEPTION_RADIUS, 6))
     }
     return agents
 }

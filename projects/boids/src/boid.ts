@@ -127,26 +127,35 @@ export default class Boid implements IBoid {
 
         // Boids algorithm
         this.acceleration = Vector.zero()
+
+        // TEMP: TODO: move towards center of gravity when very far away
+        const center = new Vector(wrapBoundaries.x / 2, wrapBoundaries.y / 2)
+        const towardsCenter = center.subtract(this.position).normalize()
+        // increase acceleration force when far away
+        let scale = center.distance(this.position) / wrapBoundaries.x
+        scale *= 0.01 // weak center of gravity
+
+        this.acceleration = towardsCenter.scale(scale)
+
         this.acceleration = this.acceleration.add(this.calculateSeperation(inPerceptionRadius))
         this.acceleration = this.acceleration.add(this.calculateAlignment(inPerceptionRadius))
         this.acceleration = this.acceleration.add(this.calculateCohesion(inPerceptionRadius))
 
         // physics update
-        this.velocity = this.velocity.add(this.acceleration)
-        this.velocity = this.velocity.limit(this.maxSpeed)
+        this.velocity = this.velocity.add(this.acceleration).limit(this.maxSpeed)
         this.position = this.position.add(this.velocity)
 
         // enforce wrap boundaries
-        if (this.position.x < 0) {
-            this.position = new Vector(wrapBoundaries.x, this.position.y)
-        } else if (this.position.x > wrapBoundaries.x) {
-            this.position = new Vector(0, this.position.y)
-        }
-        if (this.position.y < 0) {
-            this.position = new Vector(this.position.x, wrapBoundaries.y)
-        } else if (this.position.y > wrapBoundaries.y) {
-            this.position = new Vector(this.position.x, 0)
-        }
+        // if (this.position.x < 0) {
+        //     this.position = new Vector(wrapBoundaries.x, this.position.y)
+        // } else if (this.position.x > wrapBoundaries.x) {
+        //     this.position = new Vector(0, this.position.y)
+        // }
+        // if (this.position.y < 0) {
+        //     this.position = new Vector(this.position.x, wrapBoundaries.y)
+        // } else if (this.position.y > wrapBoundaries.y) {
+        //     this.position = new Vector(this.position.x, 0)
+        // }
     }
 
     draw(ctx: CanvasRenderingContext2D) {
@@ -176,7 +185,6 @@ export default class Boid implements IBoid {
         ctx.closePath()
         ctx.fill()
 
-        /*
         // Draw the debug line
         const debugLineLength = 20 // Adjust the length of the debug line as needed
         const debugLineEnd = {
@@ -189,6 +197,5 @@ export default class Boid implements IBoid {
         ctx.moveTo(pointA.x, pointA.y)
         ctx.lineTo(debugLineEnd.x, debugLineEnd.y)
         ctx.stroke()
-        */
     }
 }
