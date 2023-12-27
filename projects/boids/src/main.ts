@@ -34,7 +34,14 @@ function animate() {
     // update boids
     const bounds = new Vector(ctx.canvas.width, ctx.canvas.height)
     flock.forEach((boid) =>
-        boid.simulate(flock, bounds, params.perception_radius, params.max_speed, params.max_force)
+        boid.simulate(
+            flock,
+            bounds,
+            params.perception_radius,
+            params.max_speed,
+            params.max_force,
+            params.gravity
+        )
     )
 
     // draw boids
@@ -61,6 +68,7 @@ const params = {
     perception_radius: ctx.canvas.width * 0.1,
     max_speed: 1.2,
     max_force: 2.0,
+    gravity: 0.01,
 
     // drawing
     size: 5,
@@ -87,6 +95,7 @@ boidCount.on('change', (e) => {
 boidFolder.addBinding(params, 'perception_radius', { min: 10, max: 1000, step: 1, label: 'perception' })
 boidFolder.addBinding(params, 'max_speed', { min: 0, max: 10, step: 0.01 })
 boidFolder.addBinding(params, 'max_force', { min: 0, max: 10, step: 0.01 })
+boidFolder.addBinding(params, 'gravity', { min: 0, max: 1, step: 0.0001 })
 
 const drawingFolder = pane.addFolder({ title: 'Drawing' })
 drawingFolder.addBinding(params, 'size', { min: 1, max: 20, step: 1 })

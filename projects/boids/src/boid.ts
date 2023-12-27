@@ -18,7 +18,6 @@ interface IBoid {
 interface IBoidInfo {
     otherBoid: Boid
     distance: number
-    wrapBoundaries: IVector
 }
 
 export default class Boid implements IBoid {
@@ -55,23 +54,21 @@ export default class Boid implements IBoid {
         // return steering
     }
 
-    calculateAlignment(boids: IBoidInfo[]) {
-        // // sum all the velocities of the other boids
-        // let avgVelocity = boids.reduce((acc, { otherBoid }) => {
-        //     return acc.add(otherBoid.velocity)
-        // }, Vector.zero())
-        // let total = boids.length
-        // if (total > 0) {
-        //     // average direction
-        //     avgVelocity = avgVelocity.divide(total)
-        //     // steer towards neighbords average at max speed
-        //     avgVelocity = avgVelocity.setMagnitude(this.maxSpeed)
-        //     // steer towards average
-        //     avgVelocity = avgVelocity.subtract(this.velocity)
-        //     // limit
-        //     avgVelocity = avgVelocity.limit(this.maxForce)
-        // }
-        // return avgVelocity
+    calculateAlignment(boids: IBoidInfo[], maxSpeed) {
+        // sum all the velocities of the other boids
+        let avgVelocity = boids.reduce((acc, { otherBoid }) => {
+            return acc.add(otherBoid.velocity)
+        }, Vector.zero())
+        let total = boids.length
+        if (total > 0) {
+            // average direction
+            avgVelocity = avgVelocity.divide(total)
+            // steer towards neighbords average at max speed
+            avgVelocity = avgVelocity.setMagnitude(maxSpeed)
+            // steer towards average
+            avgVelocity = avgVelocity.subtract(this.velocity)
+        }
+        return avgVelocity
     }
 
     calculateCohesion(boids: IBoidInfo[]) {
@@ -95,38 +92,46 @@ export default class Boid implements IBoid {
         // return Vector.zero()
     }
 
-    simulate(flock: Boid[], bounds: IVector, perceptionRadius: number, maxSpeed: number, maxForce: number) {
-        // Get all boids within perception radius
-        // const inPerceptionRadius = flock
-        //     .map((otherBoid) => {
-        //         let distance = this.position.toroidalDistance(
-        //             otherBoid.position,
-        //             wrapBoundaries.x,
-        //             wrapBoundaries.y
-        //         )
-        //         return distance > 0 && distance < this.perceptionRadius
-        //             ? { otherBoid, distance, wrapBoundaries }
-        //             : null
-        //     })
-        //     .filter((item) => item !== null) as IBoidInfo[]
-
-        // // Boids algorithm
-        // this.acceleration = Vector.zero()
-
-        // TEMP: TODO: move towards center of gravity when very far away
-        const center = new Vector(bounds.x / 2, bounds.y / 2)
+    calculateGravity(center: Vector, gravity: number) {
         const towardsCenter = center.subtract(this.position).normalize()
-        // increase acceleration force when far away
-        let scale = center.distance(this.position) / bounds.x
-        scale *= 0.01 // weak center of gravity
+        let scale = center.distance(this.position) / center.x // increase acceleration force when far away
+        scale *= gravity // weak center of gravity
+        return towardsCenter.scale(scale)
+    }
 
-        this.acceleration = towardsCenter.scale(scale)
+    boidsInPerceptionRadius(flock: Boid[], perceptionRadius: number) {
+        return flock
+            .map((otherBoid) => {
+                let distance = this.position.distance(otherBoid.position)
+                return distance > 0 && distance < perceptionRadius ? { otherBoid, distance } : null
+            })
+            .filter((item) => item !== null) as IBoidInfo[]
+    }
+
+    simulate(
+        flock: Boid[],
+        bounds: IVector,
+        perceptionRadius: number,
+        maxSpeed: number,
+        maxForce: number,
+        gravity: number
+    ) {
+        // central gravity
+        const center = new Vector(bounds.x / 2, bounds.y / 2)
+        this.acceleration = this.calculateGravity(center, gravity) // clear and replace acceleration
+        console.log(gravity)
+
+        // this.acceleration = Vector.zero() // clear and replace acceleration
+
+        // Get all boids within perception radius
+        const inPerceptionRadius = this.boidsInPerceptionRadius(flock, perceptionRadius)
 
         // this.acceleration = this.acceleration.add(this.calculateSeperation(inPerceptionRadius))
-        // this.acceleration = this.acceleration.add(this.calculateAlignment(inPerceptionRadius))
+        this.acceleration = this.acceleration.add(this.calculateAlignment(inPerceptionRadius, maxSpeed))
         // this.acceleration = this.acceleration.add(this.calculateCohesion(inPerceptionRadius))
 
         // physics update
+        this.acceleration = this.acceleration.limit(maxForce)
         this.velocity = this.velocity.add(this.acceleration).limit(maxSpeed)
         this.position = this.position.add(this.velocity)
     }
