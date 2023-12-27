@@ -1,6 +1,7 @@
 import './style.css'
 import Boid from './boid'
 import { Vector } from './vector'
+import { Pane } from 'tweakpane'
 
 function setupCanvas() {
     const canvas = document.createElement('canvas')
@@ -17,12 +18,12 @@ function setupCanvas() {
     return ctx
 }
 
-function setupAgents(randomPositionFn: () => Vector, randomVelocityFn: () => Vector): Boid[] {
-    let agents: Boid[] = []
-    for (let i = 0; i < BOID_COUNT; i++) {
-        agents.push(new Boid(randomPositionFn(), randomVelocityFn(), PERCEPTION_RADIUS, 6))
+function setupFlock(): Boid[] {
+    let flock: Boid[] = []
+    for (let i = 0; i < params.count; i++) {
+        flock.push(new Boid(randomPositionFn(), randomVelocityFn()))
     }
-    return agents
+    return flock
 }
 
 function animate() {
@@ -30,12 +31,14 @@ function animate() {
     ctx.fillStyle = '#111'
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
-    // update agents
-    const wrapBoundaries = new Vector(ctx.canvas.width, ctx.canvas.height)
-    agents.forEach((agent) => agent.simulate(agents, wrapBoundaries))
+    // update boids
+    const bounds = new Vector(ctx.canvas.width, ctx.canvas.height)
+    flock.forEach((boid) =>
+        boid.simulate(flock, bounds, params.perception_radius, params.max_speed, params.max_force)
+    )
 
-    // draw agents
-    agents.forEach((agent) => agent.draw(ctx))
+    // draw boids
+    flock.forEach((boid) => boid.draw(ctx, params.size, params.color, params.debug))
 
     requestAnimationFrame(animate)
 }
@@ -47,15 +50,48 @@ function randomDirection() {
 function randomDirectionWithSpeed(speed: number) {
     return () => randomDirection().scale(speed)
 }
+let randomPositionFn = () => new Vector(Math.random() * ctx.canvas.width, Math.random() * ctx.canvas.height)
+let randomVelocityFn = randomDirectionWithSpeed(1.2)
 
 const ctx = setupCanvas()
 
-const BOID_COUNT = 800
-const PERCEPTION_RADIUS = ctx.canvas.width * 0.05
+const params = {
+    // boids simulation
+    count: 400,
+    perception_radius: ctx.canvas.width * 0.1,
+    max_speed: 1.2,
+    max_force: 2.0,
 
-const agents = setupAgents(
-    () => new Vector(Math.random() * ctx.canvas.width, Math.random() * ctx.canvas.height),
-    randomDirectionWithSpeed(1.2)
-)
+    // drawing
+    size: 5,
+    color: '#ffffff',
+    debug: false,
+}
 
+const pane = new Pane()
+
+const boidFolder = pane.addFolder({ title: 'Boids' })
+const boidCount = boidFolder.addBinding(params, 'count', { min: 1, max: 1000, step: 1 })
+boidCount.on('change', (e) => {
+    if (flock.length > e.value) {
+        // remove boids
+        flock = flock.slice(0, e.value)
+    } else {
+        // add boids
+        const addCount = e.value - flock.length
+        for (let i = 0; i < addCount; i++) {
+            flock.push(new Boid(randomPositionFn(), randomVelocityFn()))
+        }
+    }
+})
+boidFolder.addBinding(params, 'perception_radius', { min: 10, max: 1000, step: 1, label: 'perception' })
+boidFolder.addBinding(params, 'max_speed', { min: 0, max: 10, step: 0.01 })
+boidFolder.addBinding(params, 'max_force', { min: 0, max: 10, step: 0.01 })
+
+const drawingFolder = pane.addFolder({ title: 'Drawing' })
+drawingFolder.addBinding(params, 'size', { min: 1, max: 20, step: 1 })
+drawingFolder.addBinding(params, 'color')
+drawingFolder.addBinding(params, 'debug')
+
+let flock = setupFlock()
 animate()
